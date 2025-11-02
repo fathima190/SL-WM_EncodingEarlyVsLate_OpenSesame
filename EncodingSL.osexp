@@ -1,0 +1,644 @@
+---
+API: 3
+OpenSesame: 4.1.3
+Platform: posix
+---
+set width 1024
+set title "New experiment"
+set subject_parity even
+set subject_nr 0
+set start experiment
+set sound_sample_size -16
+set sound_freq 48000
+set sound_channels 2
+set sound_buf_size 1024
+set round_decimals 2
+set height 768
+set fullscreen no
+set form_clicks no
+set foreground white
+set font_underline no
+set font_size 18
+set font_italic no
+set font_family mono
+set font_bold no
+set experiment_path None
+set disable_garbage_collection yes
+set description "A template containing a practice and an experimental phase"
+set canvas_backend psycho
+set background "#3d3846"
+
+define notepad about_this_template
+	__note__
+	This template already contains the basic structure of a typical experiment.
+	It consists of a practice phase, followed by an experimental phase. For more
+	information, please visit <http://osdoc.cogsci.nl/>
+	Have fun with OpenSesame!
+	__end__
+	set description "Some pointers to help you gest started!"
+
+define inline_script array_present_prac
+	set description "Executes Python code"
+	___run__
+	exp.canvas_array.show()
+	clock.sleep(var.encoding_ms)   #show array for encoding duration
+	__end__
+	___prepare__
+	from openexp.canvas import Canvas
+	import random
+	
+	# Pick a random permutation of the fixed 6 colors for this trial
+	colors_perm = exp.fixed_colors[:]  # copy
+	random.shuffle(colors_perm)
+	exp.colors_this_trial = colors_perm  # store so probe can use it
+	
+	# Draw the 6 squares at predefined positions
+	c = Canvas(exp)
+	for (x,y), col in zip(exp.array_locs, colors_perm):
+	    c.rect(x-exp.sq//2, y-exp.sq//2, exp.sq, exp.sq, fill=True, color=col)
+	exp.canvas_array = c
+	__end__
+
+define inline_script array_present_short
+	set description "Executes Python code"
+	___run__
+	# array_present (Run) 
+	exp.canvas_array.show()
+	clock.sleep(var.encoding_ms)   # duration varies per trial
+	__end__
+	___prepare__
+	#array_present(Prepare)
+	from openexp.canvas import Canvas
+	import random
+	
+	# 1. Shuffle the same fixed color list each trial
+	colors_perm = exp.fixed_colors[:]  
+	random.shuffle(colors_perm)
+	exp.colors_this_trial = colors_perm
+	
+	# 2. Draw 6 colored squares
+	c = Canvas(exp)
+	for (x, y), col in zip(exp.array_locs, colors_perm):
+	    c.rect(x-exp.sq//2, y-exp.sq//2, exp.sq, exp.sq, fill=True, color=col)
+	exp.canvas_array = c
+	__end__
+
+define sketchpad break_sketchpad
+	set duration keypress
+	set description "Displays stimuli"
+	draw textline center=1 color=white font_bold=no font_family=mono font_italic=no font_size=18 html=yes show_if=True text="You’re halfway through the experiment!<br /><br />You can take a short break now, or press any key to continue when you’re ready." x=0 y=0 z_index=0
+
+define sketchpad end_of_experiment
+	set start_response_interval no
+	set duration keypress
+	set description "A sketchpad notifying the participant that the experiment is finished"
+	draw textline center=1 color=white font_bold=no font_family=mono font_italic=no font_size=18 html=yes show_if=True text="End of Experiment<br /><br />Thank you for your participation!" x=0 y=0 z_index=0
+
+define loop exp_loop_block_1
+	set source table
+	set repeat 1
+	set order random
+	set description "Repeatedly runs another item"
+	set cycles 5
+	set continuous no
+	set break_if_on_first yes
+	set break_if False
+	setcycle 0 trial_id 1
+	setcycle 0 encoding_ms 150
+	setcycle 0 is_practice 0
+	setcycle 1 trial_id 2
+	setcycle 1 encoding_ms 500
+	setcycle 1 is_practice 0
+	setcycle 2 trial_id 3
+	setcycle 2 encoding_ms 150
+	setcycle 2 is_practice 0
+	setcycle 3 trial_id 4
+	setcycle 3 encoding_ms 500
+	setcycle 3 is_practice 0
+	setcycle 4 trial_id 5
+	setcycle 4 encoding_ms 150
+	setcycle 4 is_practice 0
+	run exp_sequence_1
+
+define sequence exp_sequence_1
+	set flush_keyboard yes
+	set description "Runs a number of items in sequence"
+	run fixation_1 True
+	run array_present_short True
+	run retention_1 True
+	run set_probe_vars_1 True
+	run probe_display_1 True
+	run iti_1 True
+	run logger_1 True
+
+define sequence experiment
+	set flush_keyboard yes
+	set description "The main sequence of the experiment"
+	run about_this_template True
+	run new_sketchpad True
+	run init_experiment True
+	run practice_block True
+	run new_1_sketchpad True
+	run exp_loop_block_1 True
+	run break_sketchpad True
+	run new_1_loop True
+	run end_of_experiment True
+
+define sketchpad fixation
+	set duration 500
+	set description "Displays stimuli"
+	draw fixdot color=white show_if=True style=default x=0 y=0 z_index=0
+
+define sketchpad fixation_1
+	set duration 500
+	set description "Displays stimuli"
+	draw fixdot color=white show_if=True style=default x=0 y=0 z_index=0
+
+define inline_script init_experiment
+	set description "Executes Python code"
+	set _run ""
+	___prepare__
+	# init_experiment (Prepare)
+	from openexp.canvas import Canvas
+	from openexp.keyboard import Keyboard
+	import random, math
+	
+	#Safe subject number
+	try:
+	    subj = int(var.subject_number)
+	except Exception:
+	    subj = random.randint(1, 9999)  #fallback if not defined
+	
+	random.seed(subj)
+	var.subject_number = subj  # store it for reference
+	
+	# Fixed color palette (6 throughout the whole experiment)
+	# Use RGB tuples 0..255. Adjust if you like different shades.
+	exp.fixed_colors = [
+	    (255,  99,  71),   
+	    ( 65, 105, 225),   
+	    ( 60, 179, 113),   
+	    (238, 130, 238),   
+	    (255, 215,   0),   
+	    (255, 140,   0),   
+	]
+	
+	#6 array locations around a circle, centered at (0,0)
+	# radius in px; tweak if you want tighter/wider spacing
+	radius = 180
+	exp.array_locs = []
+	for i in range(6):
+	    ang = math.radians(60*i)   # 6 evenly-spaced positions
+	    x = int(radius * math.cos(ang))
+	    y = int(radius * math.sin(ang))
+	    exp.array_locs.append((x, y))
+	
+	#Square patch size (px)
+	exp.sq = 60
+	
+	#Outline width for the probed location
+	exp.outline_w = 6
+	
+	#High-probability probe location (0..5), fixed per participant
+	# If you prefer rotating across participants, e.g., hp_loc = subject_number % 6
+	hp_loc = random.randrange(6)
+	var.hp_loc = hp_loc
+	
+	#Percent of trials that probe the high-prob location
+	var.hp_probe_percent = 70  # change as needed
+	
+	#Same/Different probability
+	var.same_percent = 50
+	
+	#Keys
+	var.key_same = 's'
+	var.key_diff = 'l'
+	__end__
+
+define sketchpad iti
+	set duration 500
+	set description "Displays stimuli"
+	draw fixdot color=white show_if=True style=default x=0 y=0 z_index=0
+
+define sketchpad iti_1
+	set duration 600
+	set description "Displays stimuli"
+
+define logger logger_1
+	set description "Logs experimental data"
+	set auto_log yes
+	log subject_nr
+	log trial_id
+	log encoding_ms
+	log hp_loc
+	log probe_index
+	log is_same
+	log response
+	log correct
+	log rt
+	log probe_x
+	log probe_y
+	log is_practice
+
+define inline_script new_1_inline_script
+	set description "Executes Python code"
+	___run__
+	# array_present (Run) 
+	exp.canvas_array.show()
+	clock.sleep(var.encoding_ms)   # duration varies per trial
+	__end__
+	___prepare__
+	#array_present(Prepare)
+	from openexp.canvas import Canvas
+	import random
+	
+	# 1. Shuffle the same fixed color list each trial
+	colors_perm = exp.fixed_colors[:]  
+	random.shuffle(colors_perm)
+	exp.colors_this_trial = colors_perm
+	
+	# 2. Draw 6 colored squares
+	c = Canvas(exp)
+	for (x, y), col in zip(exp.array_locs, colors_perm):
+	    c.rect(x-exp.sq//2, y-exp.sq//2, exp.sq, exp.sq, fill=True, color=col)
+	exp.canvas_array = c
+	__end__
+
+define logger new_1_logger
+	set description "Logs experimental data"
+	set auto_log yes
+	log subject_nr
+	log trial_id
+	log encoding_ms
+	log hp_loc
+	log probe_index
+	log is_same
+	log response
+	log correct
+	log rt
+	log probe_x
+	log probe_y
+	log is_practice
+
+define loop new_1_loop
+	set source_file ""
+	set source table
+	set repeat 1
+	set order random
+	set description "Repeatedly runs another item"
+	set cycles 5
+	set continuous no
+	set break_if_on_first yes
+	set break_if False
+	setcycle 0 trial_id 1
+	setcycle 0 encoding_ms 150
+	setcycle 0 is_practice 0
+	setcycle 1 trial_id 2
+	setcycle 1 encoding_ms 500
+	setcycle 1 is_practice 0
+	setcycle 2 trial_id 3
+	setcycle 2 encoding_ms 150
+	setcycle 2 is_practice 0
+	setcycle 3 trial_id 4
+	setcycle 3 encoding_ms 500
+	setcycle 3 is_practice 0
+	setcycle 4 trial_id 5
+	setcycle 4 encoding_ms 150
+	setcycle 4 is_practice 0
+	run new_1_sequence
+
+define sequence new_1_sequence
+	set flush_keyboard yes
+	set description "Runs a number of items in sequence"
+	run new_2_sketchpad True
+	run new_1_inline_script True
+	run new_3_sketchpad True
+	run new_2_inline_script True
+	run new_3_inline_script True
+	run new_4_sketchpad True
+	run new_1_logger True
+
+define sketchpad new_1_sketchpad
+	set duration keypress
+	set description "Displays stimuli"
+	draw textline center=1 color=white font_bold=no font_family=mono font_italic=no font_size=18 html=yes show_if=True text="The practice block ends now<br /><br />The experiment will begin now!" x=0 y=0 z_index=0
+
+define inline_script new_2_inline_script
+	set description "Executes Python code"
+	set _run ""
+	___prepare__
+	#set_probe_vars (Prepare)
+	import random
+	
+	# 1.Choose probe location (high-prob bias)
+	if random.randrange(100) < var.hp_probe_percent:
+	    probe_idx = int(var.hp_loc)
+	else:
+	    others = [i for i in range(6) if i != int(var.hp_loc)]
+	    probe_idx = random.choice(others)
+	
+	var.probe_index = probe_idx
+	var.probe_x, var.probe_y = exp.array_locs[probe_idx]
+	
+	# 2.Decide SAME vs DIFFERENT
+	is_same = random.randrange(100) < 50  #50% same
+	var.is_same = 1 if is_same else 0
+	
+	# 3.Get color for probe
+	orig_color = exp.colors_this_trial[probe_idx]
+	
+	if is_same:
+	    probe_color = orig_color
+	else:
+	    #choose a different color from the fixed set
+	    candidates = [c for c in exp.fixed_colors if c != orig_color]
+	    probe_color = random.choice(candidates)
+	
+	exp.probe_color = probe_color
+	__end__
+
+define sketchpad new_2_sketchpad
+	set duration 500
+	set description "Displays stimuli"
+	draw fixdot color=white show_if=True style=default x=0 y=0 z_index=0
+
+define inline_script new_3_inline_script
+	set description "Executes Python code"
+	___run__
+	#probe_display_1 (Run)
+	exp.canvas_probe.show()
+	resp, rt = exp.kbd.get_key()
+	var.response = resp
+	var.rt = rt
+	var.correct = 1 if (
+	    (resp == var.key_same and var.is_same == 1) or
+	    (resp == var.key_diff and var.is_same == 0)
+	) else 0
+	__end__
+	___prepare__
+	# ===== probe_display_1 (Prepare) =====
+	from openexp.canvas import Canvas
+	from openexp.keyboard import Keyboard
+	
+	kbd = Keyboard(exp, keylist=[var.key_same, var.key_diff], timeout=None)
+	
+	# Create the canvas
+	c = Canvas(exp)
+	
+	# 1. Draw placeholders (optional, for spatial context)
+	for (x, y) in exp.array_locs:
+	    c.rect(x - exp.sq//2, y - exp.sq//2, exp.sq, exp.sq, fill=False, penwidth=1)
+	
+	# 2. Draw the probed colored square
+	c.rect(
+	    var.probe_x - exp.sq//2, var.probe_y - exp.sq//2,
+	    exp.sq, exp.sq,
+	    fill=True, color=exp.probe_color
+	)
+	
+	# 3. Draw a bold outline around it
+	c.rect(
+	    var.probe_x - exp.sq//2 - 4, var.probe_y - exp.sq//2 - 4,
+	    exp.sq + 8, exp.sq + 8,
+	    fill=False, penwidth=exp.outline_w
+	)
+	
+	# Store references for Run phase
+	exp.canvas_probe = c
+	exp.kbd = kbd
+	__end__
+
+define sketchpad new_3_sketchpad
+	set duration 750
+	set description "Displays stimuli"
+	draw fixdot color=white show_if=True style=default x=0 y=0 z_index=0
+
+define sketchpad new_4_sketchpad
+	set duration 600
+	set description "Displays stimuli"
+
+define sketchpad new_sketchpad
+	set duration keypress
+	set description "Displays stimuli"
+	draw textline center=1 color=white font_bold=no font_family=mono font_italic=no font_size=18 html=yes show_if=True text="Welcome!<br /><br />Remember the colors of 6 squares.<br />Later one location will be outlined — respond:<br />S = SAME     L = DIFFERENT<br /><br />Practice shows “Correct/Incorrect”. The real task has no feedback.<br />Press SPACE to begin.<br />" x=0 y=0 z_index=0
+
+define loop practice_block
+	set source table
+	set skip 0
+	set repeat 1
+	set order random
+	set offset no
+	set item block_sequence
+	set description "A loop containing one or more practice blocks"
+	set cycles 6
+	set continuous no
+	set column_order practice
+	set break_if_on_first yes
+	set break_if False
+	setcycle 0 trial_id 1
+	setcycle 0 is_practice 1
+	setcycle 0 encoding_ms 150
+	setcycle 1 trial_id 2
+	setcycle 1 is_practice 1
+	setcycle 1 encoding_ms 500
+	setcycle 2 trial_id 3
+	setcycle 2 is_practice 1
+	setcycle 2 encoding_ms 150
+	setcycle 3 trial_id 4
+	setcycle 3 is_practice 1
+	setcycle 3 encoding_ms 500
+	setcycle 4 trial_id 5
+	setcycle 4 is_practice 1
+	setcycle 4 encoding_ms 150
+	setcycle 5 trial_id 6
+	setcycle 5 is_practice 1
+	setcycle 5 encoding_ms 500
+	run practice_sequence
+
+define inline_script practice_feedback
+	set description "Executes Python code"
+	___run__
+	exp.feedback_canvas.show()
+	clock.sleep(500)
+	__end__
+	___prepare__
+	#practice_feedback
+	from openexp.canvas import Canvas
+	
+	c = Canvas(exp)
+	if var.correct == 1:
+	    c.text('Correct', center=True, color='green')
+	else:
+	    c.text('Incorrect', center=True, color='red')
+	
+	exp.feedback_canvas = c
+	__end__
+
+define sequence practice_sequence
+	set flush_keyboard yes
+	set description "A sequence containing a single block of trials followed by feedback to the participant"
+	run fixation True
+	run array_present_prac True
+	run retention True
+	run set_probe_vars True
+	run probe_display_prac True
+	run practice_feedback True
+	run iti True
+
+define inline_script probe_display_1
+	set description "Executes Python code"
+	___run__
+	#probe_display_1 (Run)
+	exp.canvas_probe.show()
+	resp, rt = exp.kbd.get_key()
+	var.response = resp
+	var.rt = rt
+	var.correct = 1 if (
+	    (resp == var.key_same and var.is_same == 1) or
+	    (resp == var.key_diff and var.is_same == 0)
+	) else 0
+	__end__
+	___prepare__
+	# ===== probe_display_1 (Prepare) =====
+	from openexp.canvas import Canvas
+	from openexp.keyboard import Keyboard
+	
+	kbd = Keyboard(exp, keylist=[var.key_same, var.key_diff], timeout=None)
+	
+	# Create the canvas
+	c = Canvas(exp)
+	
+	# 1. Draw placeholders (optional, for spatial context)
+	for (x, y) in exp.array_locs:
+	    c.rect(x - exp.sq//2, y - exp.sq//2, exp.sq, exp.sq, fill=False, penwidth=1)
+	
+	# 2. Draw the probed colored square
+	c.rect(
+	    var.probe_x - exp.sq//2, var.probe_y - exp.sq//2,
+	    exp.sq, exp.sq,
+	    fill=True, color=exp.probe_color
+	)
+	
+	# 3. Draw a bold outline around it
+	c.rect(
+	    var.probe_x - exp.sq//2 - 4, var.probe_y - exp.sq//2 - 4,
+	    exp.sq + 8, exp.sq + 8,
+	    fill=False, penwidth=exp.outline_w
+	)
+	
+	# Store references for Run phase
+	exp.canvas_probe = c
+	exp.kbd = kbd
+	__end__
+
+define inline_script probe_display_prac
+	set description "Executes Python code"
+	___run__
+	exp.canvas_probe.show()
+	resp, rt = exp.kbd.get_key()
+	var.response = resp
+	var.rt = rt
+	var.correct = 1 if ((resp == var.key_same and var.is_same == 1) or
+	                    (resp == var.key_diff and var.is_same == 0)) else 0
+	__end__
+	___prepare__
+	from openexp.canvas import Canvas
+	from openexp.keyboard import Keyboard
+	
+	kbd = Keyboard(exp, keylist=[var.key_same, var.key_diff], timeout=None)
+	
+	
+	c = Canvas(exp)
+	# first, redraw empty placeholders for all six (optional visual context)
+	for (x,y) in exp.array_locs:
+	    c.rect(x-exp.sq//2, y-exp.sq//2, exp.sq, exp.sq, fill=False, penwidth=1)
+	
+	# draw the probed color at the probed location
+	c.rect(var.probe_x-exp.sq//2, var.probe_y-exp.sq//2, exp.sq, exp.sq, 
+	       fill=True, color=exp.probe_color)
+	
+	# draw a bold outline to indicate probe
+	c.rect(var.probe_x-exp.sq//2-4, var.probe_y-exp.sq//2-4, 
+	       exp.sq+8, exp.sq+8, fill=False, penwidth=exp.outline_w)
+	
+	exp.canvas_probe = c
+	exp.kbd = kbd
+	__end__
+
+define sketchpad retention
+	set duration 500
+	set description "Displays stimuli"
+
+define sketchpad retention_1
+	set duration 750
+	set description "Displays stimuli"
+	draw fixdot color=white show_if=True style=default x=0 y=0 z_index=0
+
+define inline_script set_probe_vars
+	set description "Executes Python code"
+	set _run ""
+	___prepare__
+	import random
+	
+	# Decide probed location with bias
+	if random.randrange(100) < var.hp_probe_percent:
+	    probe_idx = int(var.hp_loc)
+	else:
+	    # pick any other of the remaining 5 locations
+	    others = [i for i in range(6) if i != int(var.hp_loc)]
+	    probe_idx = random.choice(others)
+	
+	var.probe_index = probe_idx
+	var.probe_x, var.probe_y = exp.array_locs[probe_idx]
+	
+	# Decide SAME vs DIFFERENT
+	is_same = (random.randrange(100) < var.same_percent)
+	var.is_same = 1 if is_same else 0
+	
+	# What color was originally at that location?
+	orig_color = exp.colors_this_trial[probe_idx]
+	
+	if is_same:
+	    probe_color = orig_color
+	else:
+	    # choose a different color from the remaining 5 of the fixed palette
+	    candidates = [c for c in exp.fixed_colors if c != orig_color]
+	    probe_color = random.choice(candidates)
+	
+	exp.probe_color = probe_color
+	__end__
+
+define inline_script set_probe_vars_1
+	set description "Executes Python code"
+	set _run ""
+	___prepare__
+	#set_probe_vars (Prepare)
+	import random
+	
+	# 1.Choose probe location (high-prob bias)
+	if random.randrange(100) < var.hp_probe_percent:
+	    probe_idx = int(var.hp_loc)
+	else:
+	    others = [i for i in range(6) if i != int(var.hp_loc)]
+	    probe_idx = random.choice(others)
+	
+	var.probe_index = probe_idx
+	var.probe_x, var.probe_y = exp.array_locs[probe_idx]
+	
+	# 2.Decide SAME vs DIFFERENT
+	is_same = random.randrange(100) < 50  #50% same
+	var.is_same = 1 if is_same else 0
+	
+	# 3.Get color for probe
+	orig_color = exp.colors_this_trial[probe_idx]
+	
+	if is_same:
+	    probe_color = orig_color
+	else:
+	    #choose a different color from the fixed set
+	    candidates = [c for c in exp.fixed_colors if c != orig_color]
+	    probe_color = random.choice(candidates)
+	
+	exp.probe_color = probe_color
+	__end__
+
